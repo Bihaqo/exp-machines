@@ -1,10 +1,12 @@
 This is an implementation of Exponential Machines (the paper is coming soon).
 
 
-# Prerequisites
+# Dependencies
 * The Python version of the [TT-toolbox](https://github.com/oseledets/ttpy).
 * [Scikit-learn](http://scikit-learn.org/stable/)
+* [NumPy](http://www.numpy.org/)
 * [Numba](http://numba.pydata.org/)
+* [Accelerate](https://docs.continuum.io/accelerate/index) is not required, but makes everything faster.
 
 # Usage
 The interface is the same as of Scikit-learn models. To train a model with logistic loss, TT-rank equal 4  using the Riemannian solver for 10 iteration use the following code:
