@@ -287,5 +287,9 @@ def vectorized_tt_dot(w, x):
     """
     linear_core = _prepare_linear_core(w)
     res = np.zeros(x.shape[0])
-    _vectorized_tt_dot_jit(linear_core, x, res, w.d, w.r)
+    # On 64 bit Mac w.r is int32 for some reason and
+    # jit version of _vectorized_tt_dot_ returns an error saying
+    # that it got arguments of different datatype (int32 and int64).
+    rank = w.r.astype(int)
+    _vectorized_tt_dot_jit(linear_core, x, res, w.d, rank)
     return res
