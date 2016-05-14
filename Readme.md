@@ -1,4 +1,4 @@
-This is an implementation of Exponential Machines form the paper Tensor Train polynomial models via Riemannian optimization [\[1605.03795\]](https://arxiv.org/abs/1605.03795).
+This is an implementation of Exponential Machines from the paper "Tensor Train polynomial models via Riemannian optimization" [\[1605.03795\]](https://arxiv.org/abs/1605.03795).
 
 The main idea is to use a full exponentially-large polynomial model with all interactions of every order. To deal with exponential complexity we represent and learn the tensor of parameters in the Tensor Train (TT) format.
 
