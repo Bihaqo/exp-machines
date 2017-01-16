@@ -70,7 +70,7 @@ def build_reg_tens(n, exp_reg):
 
 
 def riemannian_sgd(train_x, train_y, vectorized_tt_dot_h, loss_h,
-                   loss_grad_h, project_h, w0, intercept0=0,
+                   loss_grad_h, project_h, learning_rate, w0, intercept0=0,
                    fit_intercept=True, val_x=None, val_y=None,
                    reg=0., exp_reg=1., dropout=None, batch_size=-1,
                    num_passes=30, seed=None, logger=None, verbose_period=1,
@@ -123,59 +123,13 @@ def riemannian_sgd(train_x, train_y, vectorized_tt_dot_h, loss_h,
             batch_y = train_y[curr_idx]
             batch_w_x = vectorized_tt_dot_h(w, curr_batch)
             batch_linear_o = batch_w_x + b
-            batch_loss_arr = loss_h(batch_linear_o, batch_y)
             wreg = w * reg_tens
             wregreg = w * reg_tens * reg_tens
-            wreg_wreg = wreg.norm()**2
-            batch_loss = np.sum(batch_loss_arr) + reg * wreg_wreg / 2.0
             batch_grad_coef = loss_grad_h(batch_linear_o, batch_y)
-            batch_gradient_b = np.sum(batch_grad_coef)
             direction = project_h(w, curr_batch, batch_grad_coef, reg=0)
             direction = riemannian.project(w, [direction, reg * wregreg])
-            batch_dir_x = vectorized_tt_dot_h(direction, curr_batch)
 
-            dir_dir = direction.norm()**2
-            wreg_dir = tt.dot(wreg, direction)
-            if fit_intercept:
-                # TODO: Use classical Newton-Raphson (with hessian).
-                step_objective = lambda s: _regularized_loss_step(s, loss_h, batch_y, batch_w_x, batch_dir_x, b, batch_gradient_b, reg, wreg_wreg, wreg_dir, dir_dir)
-                step_gradient = lambda s: _regularized_loss_step_grad(s, loss_grad_h, batch_y, batch_w_x, batch_dir_x, b, batch_gradient_b, reg, wreg_dir, dir_dir)
-                step0_w, step0_b = fmin_bfgs(step_objective, np.ones(2), fprime=step_gradient, gtol=1e-10, disp=logger.disp())
-            else:
-                def w_step_objective(w_step):
-                    steps = np.array([w_step, 0])
-                    obj = _regularized_loss_step(steps, loss_h, batch_y,
-                                                 batch_w_x, batch_dir_x, b,
-                                                 batch_gradient_b, reg, wreg_wreg,
-                                                 wreg_dir, dir_dir)
-                    return obj
-                step0_w = minimize_scalar(w_step_objective).x
-
-
-            # TODO: consider using Probabilistic Line Searches for Stochastic Optimization.
-#           Armiho step choosing.
-            step_w = step0_w
-            # <gradient, direction> =
-            # = <(\sum_i coef[i] * x_i + reg * w), direction> =
-            # = \sum_i coef[i] <x_i, direction> + reg * <w, direction>
-            grad_times_direction = batch_dir_x.dot(batch_grad_coef) + reg * wreg_dir
-            while step_w > 1e-10:
-                new_w = (w - step_w * direction).round(eps=0, rmax=max(w.r))
-                new_w_x = vectorized_tt_dot_h(new_w, curr_batch)
-
-                if fit_intercept:
-                    b_objective = lambda b: np.sum(loss_h(new_w_x + b, batch_y))
-                    m = minimize_scalar(b_objective)
-                    b = m.x
-                    new_loss = m.fun
-                else:
-                    new_loss = np.sum(loss_h(new_w_x + b, batch_y))
-                new_wreg = new_w * reg_tens
-                new_loss += reg * new_wreg.norm()**2 / 2.0
-                if new_loss <= batch_loss - rho * step_w * grad_times_direction:
-                    break
-                step_w *= beta
-            w = new_w
+            w = (w - learning_rate * direction).round(eps=0, rmax=max(w.r))
 
         if (logger is not None) and e % verbose_period == 0:
             logger.after_each_iter(e, train_x, train_y, w, lambda w, x: vectorized_tt_dot_h(w, x) + b, stage='train')
