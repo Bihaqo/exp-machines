@@ -4,13 +4,14 @@ import tt
 
 
 # TODO: add Adam scheme support.
+# TODO: support fit_intercept
+# TODO: debug?
 def core_sgd(train_x, train_y, vectorized_tt_dot_h, loss_h,
-             loss_grad_h, grad_wrt_cores_h, w0, intercept0=0,
+             loss_grad_h, grad_wrt_cores_h, learning_rate, w0, intercept0=0,
              fit_intercept=True, val_x=None, val_y=None, reg=0,
              batch_size=-1, num_passes=30, seed=None,
              logger=None, verbose_period=1,
-             debug=False,
-             beta=0.5, rho=0.1):
+             debug=False):
     """SGD w.r.t. TT-cores optimization for a linear model with weights in TT.
 
     The objective function is
@@ -54,34 +55,13 @@ def core_sgd(train_x, train_y, vectorized_tt_dot_h, loss_h,
             batch_y = train_y[curr_idx]
             batch_w_x = vectorized_tt_dot_h(w, train_x[curr_idx, :])
             batch_linear_o = batch_w_x + b
-            batch_loss_arr = loss_h(batch_linear_o, batch_y)
-            wcore_wcore = w.core.dot(w.core)
-            batch_loss = np.sum(batch_loss_arr) + reg * wcore_wcore / 2.0
             batch_grad_coef = loss_grad_h(batch_linear_o, batch_y)
             w_cores = tt.tensor.to_list(w)
             gradient = grad_wrt_cores_h(w_cores, train_x[curr_idx, :], batch_grad_coef)
             gradient += reg * w.core
 
-#           Armiho step choosing.
-            step_prev_w = step_w
-            gradient_norm = np.linalg.norm(gradient)
-            while step_w > 1e-10:
-                new_w = w.copy()
-                new_w.core += -step_w * gradient
-                new_w_x = vectorized_tt_dot_h(new_w, train_x[curr_idx, :])
+            w.core += -learning_rate * gradient
 
-                if fit_intercept:
-                    b_objective = lambda b: np.sum(loss_h(new_w_x + b, batch_y))
-                    m = minimize_scalar(b_objective)
-                    b = m.x
-                    new_loss = m.fun
-                else:
-                    new_loss = np.sum(loss_h(new_w_x + b, batch_y))
-                new_loss += reg * new_w.core.dot(new_w.core) / 2.0
-                if new_loss <= batch_loss - rho * step_w * gradient_norm**2:
-                    break
-                step_w *= beta
-            w = new_w
 
         if (logger is not None) and e % verbose_period == 0:
             logger.after_each_iter(e, train_x, train_y, w, lambda w, x: vectorized_tt_dot_h(w, x) + b, stage='train')

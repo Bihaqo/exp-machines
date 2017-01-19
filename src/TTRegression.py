@@ -45,7 +45,7 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
         Contains all the logged details (e.g. loss on each iteration).
     """
 
-    def __init__(self, tt_model, loss_name, rank,
+    def __init__(self, tt_model, loss_name, rank, learning_rate,
                  solver='riemannian-sgd', batch_size=-1, fit_intercept=True,
                  reg=0., exp_reg=1.0, dropout=None, max_iter=100, verbose=0,
                  persuit_init=False, coef0=None, intercept0=None):
@@ -55,6 +55,7 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
         self.tt_model = tt_model
         self.loss_name = loss_name
         self.rank = rank
+        self.learning_rate = learning_rate
         self.solver = solver
         self.batch_size = batch_size
         self.fit_intercept = fit_intercept
@@ -226,16 +227,15 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
         if self.solver == 'riemannian-sgd':
             from optimizers.riemannian_sgd import riemannian_sgd
             w, b = riemannian_sgd(X, y, self.tt_dot, self.loss, self.loss_grad,
-                                  self.project, w0=self.coef_,
-                                  intercept0=self.intercept_,
+                                  self.project, self.learning_rate,
+                                  w0=self.coef_, intercept0=self.intercept_,
                                   fit_intercept=self.fit_intercept,
                                   val_x=val_X, val_y=val_y,
                                   reg=self.reg, exp_reg=self.exp_reg,
                                   dropout=self.dropout,
                                   batch_size=self.batch_size,
                                   num_passes=self.max_iter,
-                                  logger=self.logger, verbose_period=1,
-                                  beta=0.5, rho=0.1)
+                                  logger=self.logger, verbose_period=1)
             self.coef_, self.intercept_ = w, b
         elif self.solver == 'sgd':
             if self.dropout is not None:
@@ -243,14 +243,13 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
 
             from optimizers.core_sgd import core_sgd
             w, b = core_sgd(X, y, self.tt_dot, self.loss, self.loss_grad,
-                            self.gradient_wrt_cores, w0=self.coef_,
-                            intercept0=self.intercept_,
+                            self.gradient_wrt_cores, self.learning_rate,
+                            w0=self.coef_, intercept0=self.intercept_,
                             fit_intercept=self.fit_intercept,
                             val_x=val_X, val_y=val_y, reg=self.reg,
                             batch_size=self.batch_size,
                             num_passes=self.max_iter,
-                            logger=self.logger, verbose_period=1,
-                            beta=0.5, rho=0.1)
+                            logger=self.logger, verbose_period=1)
             self.coef_, self.intercept_ = w, b
         else:
             raise ValueError("Only 'riemannian-sgd' and 'sgd' solvers are supported.")
