@@ -359,7 +359,7 @@ def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes
         result[obj_idx] = val
 
 
-def vectorized_tt_dot_categorical(w, x):
+def categorical_vectorized_tt_dot(w, x):
     """Compute a dot products between a tensor w and categorical subset tensors built from x.
 
     Returns a vector with the following number in the i-th element:
