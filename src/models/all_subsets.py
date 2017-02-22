@@ -384,7 +384,7 @@ def categorical_project_all_subsets(w, X, coef=None, reg=0, debug=False):
                     ############################################
                     #### Specific to the all-subsets tensors ###
                     ############################################
-                    obj_tensor = subset_tensor(X[idx, :])
+                    obj_tensor = categorical_subset_tensor(X[idx, :], np.array(w.n) - 1)
                     ############################################
                     #################### End ###################
                     ############################################
