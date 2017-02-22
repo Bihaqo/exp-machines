@@ -294,3 +294,60 @@ def vectorized_tt_dot(w, x):
     rank = w.r.astype(int)
     _vectorized_tt_dot_jit(linear_core, x, res, w.d, rank)
     return res
+
+
+# @jit(nopython=True)
+def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes, ranks):
+    """Compute a dot products between a tensor w and subset tensors built from x.
+
+    In most cases use the wrapper function (vectorized_tt_dot).
+    """
+    num_objects, num_features = X.shape
+    current_vectors = np.zeros((num_objects, ranks[1]))
+    for obj_idx in range(num_objects):
+        idx = 0
+        for alpha_2 in range(ranks[1]):
+            class_idx = idx + X[obj_idx, 0] + 1
+            current_vectors[obj_idx, alpha_2] = linear_core_w[idx] + linear_core_w[class_idx]
+            idx += modes[0]
+    for dim in range(1, num_dims-1):
+        prev_idx = idx
+        next_vectors = np.zeros((num_objects, ranks[dim+1]))
+        for obj_idx in range(num_objects):
+            idx = prev_idx
+            for alpha_2 in range(ranks[dim+1]):
+                val = 0
+                for alpha_1 in range(ranks[dim]):
+                    class_idx = idx + X[obj_idx, dim] + 1
+                    curr_core = linear_core_w[idx] + linear_core_w[class_idx]
+                    val += current_vectors[obj_idx, alpha_1] * curr_core
+                    idx += modes[dim]
+                next_vectors[obj_idx, alpha_2] = val
+        current_vectors = next_vectors
+    dim = num_dims-1
+    prev_idx = idx
+    for obj_idx in range(num_objects):
+        idx = prev_idx
+        val = 0
+        for alpha_1 in range(ranks[dim]):
+            class_idx = idx + X[obj_idx, dim] + 1
+            curr_core = linear_core_w[idx] + linear_core_w[class_idx]
+            idx += modes[dim]
+            val += current_vectors[obj_idx, alpha_1] * curr_core
+        result[obj_idx] = val
+
+
+def vectorized_tt_dot_categorical(w, x):
+    """Compute a dot products between a tensor w and categorical subset tensors built from x.
+
+    Returns a vector with the following number in the i-th element:
+    tt.dot(w, categorical_subset_tensor(x[i, :]))
+    """
+    linear_core = _prepare_linear_core(w)
+    res = np.zeros(x.shape[0])
+    # On 64 bit Mac w.r is int32 for some reason and
+    # jit version of _vectorized_tt_dot_ returns an error saying
+    # that it got arguments of different datatype (int32 and int64).
+    rank = w.r.astype(int)
+    _vectorized_tt_dot_categorical_jit(linear_core, x, res, w.d, w.n, rank)
+    return res
