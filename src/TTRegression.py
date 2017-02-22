@@ -48,7 +48,8 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
     def __init__(self, tt_model, loss_name, rank, learning_rate,
                  solver='riemannian-sgd', batch_size=-1, fit_intercept=True,
                  reg=0., exp_reg=1.0, dropout=None, max_iter=100, verbose=0,
-                 persuit_init=False, coef0=None, intercept0=None):
+                 persuit_init=False, coef0=None, intercept0=None,
+                 categorical=False):
 
         # Save all the params as class attributes. It's required by the
         # BaseEstimator class.
@@ -67,6 +68,7 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
         self.persuit_init = persuit_init
         self.coef0 = coef0
         self.intercept0 = intercept0
+        self.categorical = categorical
 
     def parse_params(self):
         """Checks the parameters and sets class attributes according to them.
@@ -86,20 +88,30 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
         self.watched_metrics = {}
         if self.tt_model == 'all-subsets':
             import models.all_subsets as all_subsets
-            self.tt_dot = all_subsets.vectorized_tt_dot
-            self.project = all_subsets.project_all_subsets
-            self.tensorize_linear_init = all_subsets.tensorize_linear_init
-            self.gradient_wrt_cores = all_subsets.gradient_wrt_cores
-            self.object_tensor = all_subsets.subset_tensor
+            if self.categorical:
+                self.tt_dot = all_subsets.categorical_vectorized_tt_dot
+                self.project = all_subsets.categorical_project_all_subsets
+                self.tensorize_linear_init = all_subsets.categorical_tensorize_linear_init
+                self.object_tensor = all_subsets.categorical_subset_tensor
+            else:
+                self.tt_dot = all_subsets.vectorized_tt_dot
+                self.project = all_subsets.project_all_subsets
+                self.tensorize_linear_init = all_subsets.tensorize_linear_init
+                self.gradient_wrt_cores = all_subsets.gradient_wrt_cores
+                self.object_tensor = all_subsets.subset_tensor
         else:
             raise ValueError("Only all-subsets model is supported.")
 
         if self.loss_name == 'logistic':
             import objectives.logistic as logistic
+
             self.loss = logistic.binary_logistic_loss
             self.loss_grad = logistic.binary_logistic_loss_grad
             self.preprocess = logistic.preprocess
-            self.linear_init = logistic.linear_init
+            if self.categorical:
+                self.linear_init = logistic.categorical_linear_init
+            else:
+                self.linear_init = logistic.linear_init
             self.watched_metrics = {
                 "logistic": self.loss,
                 "auc": roc_auc_score_reversed
@@ -112,7 +124,10 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
             self.loss = mse.mse_loss
             self.loss_grad = mse.mse_loss_grad
             self.preprocess = mse.preprocess
-            self.linear_init = mse.linear_init
+            if self.categorical:
+                self.linear_init = mse.categorical_linear_init
+            else:
+                self.linear_init = mse.linear_init
             self.watched_metrics = {
                 "mse": self.loss
             }
@@ -121,7 +136,10 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
             self.loss = hinge.hinge_loss
             self.loss_grad = hinge.hinge_loss_grad
             self.preprocess = hinge.preprocess
-            self.linear_init = hinge.linear_init
+            if self.categorical:
+                self.linear_init = hinge.categorical_linear_init
+            else:
+                self.linear_init = hinge.linear_init
             self.watched_metrics = {
                 "hinge": self.loss,
                 "auc": roc_auc_score_reversed
