@@ -14,22 +14,44 @@ def subset_tensor(x):
     return tens
 
 
-def categorical_subset_tensor(x, num_classes):
+def categorical_subset_tensor(x, num_values):
     # Here we assume that the features in x are categorical.
-    # Num classes is an array where for each feature we see the number of classes.
-    tens = tt.ones(np.array(num_classes) + 1)
+    # Num values is an array where for each feature we see the number of possible values.
+    tens = tt.ones(np.array(num_values) + 1)
     idx = 0
     tens.core *= 0
     for dim in range(x.size):
-        class_idx = idx + x[dim] + 1
+        curr_feat_idx = idx + x[dim] + 1
         tens.core[idx] = 1
-        tens.core[class_idx] = 1
-        idx += num_classes[dim] + 1
+        tens.core[curr_feat_idx] = 1
+        idx += num_values[dim] + 1
     return tens
 
 
 def tensorize_linear_init(coef, intercept):
     """Initialize all-subset model with weights of a linear model.
+
+    Given a vector of d coefficients of a linear model returns a d-dimensional
+    TT tensor of all-subsets model which represent the same linear model.
+    The resulting TT-tensor ranks equal 2."""
+    coef = np.array(coef)
+    num_features = coef.shape[0]
+    w_cores = [None] * num_features
+    for i in range(num_features):
+        if i == 0:
+            core = np.array([[[1, 0], [0, coef[i]]]])
+        elif i == num_features-1:
+            core = np.array([[[intercept], [coef[i]]], [[1], [0]]])
+        else:
+            core = np.zeros([2, 2, 2])
+            core[:, 0, :] = np.eye(2)
+            core[:, 1, :] = np.array([[0, 1], [0, 0]]) * coef[i]
+        w_cores[i] = core
+    return tt.tensor.from_list(w_cores)
+
+
+def categorical_tensorize_linear_init(coef, intercept):
+    """Initialize categorical-all-subset model with weights of a linear model.
 
     Given a vector of d coefficients of a linear model returns a d-dimensional
     TT tensor of all-subsets model which represent the same linear model.
@@ -307,8 +329,8 @@ def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes
     for obj_idx in range(num_objects):
         idx = 0
         for alpha_2 in range(ranks[1]):
-            class_idx = idx + X[obj_idx, 0] + 1
-            current_vectors[obj_idx, alpha_2] = linear_core_w[idx] + linear_core_w[class_idx]
+            curr_feat_idx = idx + X[obj_idx, 0] + 1
+            current_vectors[obj_idx, alpha_2] = linear_core_w[idx] + linear_core_w[curr_feat_idx]
             idx += modes[0]
     for dim in range(1, num_dims-1):
         prev_idx = idx
@@ -318,8 +340,8 @@ def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes
             for alpha_2 in range(ranks[dim+1]):
                 val = 0
                 for alpha_1 in range(ranks[dim]):
-                    class_idx = idx + X[obj_idx, dim] + 1
-                    curr_core = linear_core_w[idx] + linear_core_w[class_idx]
+                    curr_feat_idx = idx + X[obj_idx, dim] + 1
+                    curr_core = linear_core_w[idx] + linear_core_w[curr_feat_idx]
                     val += current_vectors[obj_idx, alpha_1] * curr_core
                     idx += modes[dim]
                 next_vectors[obj_idx, alpha_2] = val
@@ -330,8 +352,8 @@ def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes
         idx = prev_idx
         val = 0
         for alpha_1 in range(ranks[dim]):
-            class_idx = idx + X[obj_idx, dim] + 1
-            curr_core = linear_core_w[idx] + linear_core_w[class_idx]
+            curr_feat_idx = idx + X[obj_idx, dim] + 1
+            curr_core = linear_core_w[idx] + linear_core_w[curr_feat_idx]
             idx += modes[dim]
             val += current_vectors[obj_idx, alpha_1] * curr_core
         result[obj_idx] = val
