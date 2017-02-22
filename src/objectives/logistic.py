@@ -4,7 +4,7 @@ Utils related to the logistic regression.
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import OneHotEncoder
+from scipy import sparse as sp
 
 def log1pexp(x):
     """log(1 + exp(x))"""
@@ -68,15 +68,21 @@ def linear_init(X, y, fit_intercept=True):
     return logreg.coef_[0, :], intercept
 
 
-def categorical_linear_init(X, y, fit_intercept=True):
+def assemble_sparse_matrix(X, n_values):
+    offsets = np.concatenate([ [0], np.cumsum(n_values[:-1])])
+    col  =  (X + offsets).flatten()
+    row  =  np.array([[i]*X.shape[1] for i in range(len(X))]).flatten()
+    data =  np.ones(len(row))
+    return sp.csr_matrix((data, (row, col)), shape=(len(X), np.sum(n_values)))
+
+
+def categorical_linear_init(X, y, n_values, fit_intercept=True):
     if np.min(X.flatten()) < 1:
         raise ValueError('The categorical features should be from 1 to K.')
 
-    encoder = OneHotEncoder()
-    X_shifted = X - 1
-    encoder.fit(X_shifted)
+    X_one_hot = assemble_sparse_matrix(X - 1, n_values)
     logreg = LogisticRegression(fit_intercept=fit_intercept)
-    logreg.fit(encoder.transform(X_shifted), y)
+    logreg.fit(X_one_hot, y)
     if fit_intercept:
         intercept = logreg.intercept_[0]
     else:
@@ -85,7 +91,7 @@ def categorical_linear_init(X, y, fit_intercept=True):
     coef = []
     start = 0
     for feature_idx in range(num_categorical_feaures):
-        curr_num_values = encoder.n_values_[feature_idx]
+        curr_num_values = n_values[feature_idx]
         end = start + curr_num_values
         coef.append(logreg.coef_[0, start:end])
         start = end

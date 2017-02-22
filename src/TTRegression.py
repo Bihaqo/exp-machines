@@ -49,10 +49,11 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
                  solver='riemannian-sgd', batch_size=-1, fit_intercept=True,
                  reg=0., exp_reg=1.0, dropout=None, max_iter=100, verbose=0,
                  persuit_init=False, coef0=None, intercept0=None,
-                 categorical=False):
+                 categorical=False, n_values=None):
 
         # Save all the params as class attributes. It's required by the
         # BaseEstimator class.
+        # n_values is the cardinalities of the categorical features.
         self.tt_model = tt_model
         self.loss_name = loss_name
         self.rank = rank
@@ -69,6 +70,7 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
         self.coef0 = coef0
         self.intercept0 = intercept0
         self.categorical = categorical
+        self.n_values = n_values
 
     def parse_params(self):
         """Checks the parameters and sets class attributes according to them.
@@ -109,7 +111,8 @@ class TTRegression(BaseEstimator, LinearClassifierMixin):
             self.loss_grad = logistic.binary_logistic_loss_grad
             self.preprocess = logistic.preprocess
             if self.categorical:
-                self.linear_init = logistic.categorical_linear_init
+                init = logistic.categorical_linear_init
+                self.linear_init = lambda x, y: init(x, y, self.n_values)
             else:
                 self.linear_init = logistic.linear_init
             self.watched_metrics = {
