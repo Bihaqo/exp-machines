@@ -260,6 +260,148 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
     return tt.tensor.from_list(coresP)
 
 
+def categorical_project_all_subsets(w, X, coef=None, reg=0, debug=False):
+    """ Project all the categorical all_subset tensors X on the tangent space of tensor w.
+
+    w is a tensor in the TT format.
+    X is a categorical object-feature matrix.
+    The function computes the projection of the sum off all the subset tensors
+    plus the w itself times the regularization coefficient:
+        project(w, X) = P_w(reg * w + \sum_i categorical_subset_tensor(X[i, :]))
+    ).
+    This function implements an algorithm from the paper [1], theorem 3.1.
+    This code is basically a copy-paste from the tt.riemannian.project
+    with a few modifications.
+
+    Returns a tensor in the TT format with the TT-ranks equal 2 * rank(w).
+    """
+
+    num_objects = X.shape[0]
+    numDims, modeSize = w.d, w.n
+    cores_w = tt.tensor.to_list(w)
+
+
+    ############################################
+    #### Specific to the all-subsets tensors ###
+    ############################################
+    # zCoresDim[k][i, :, :, :] is the k-th core of the i-th object.
+    zCoresDim = [None] * numDims
+    for dim in xrange(numDims):
+        zCoresDim[dim] = np.zeros([num_objects, 1, modeSize[dim], 1])
+        zCoresDim[dim][:, 0, 0, 0] = 1
+        zCoresDim[dim][range(num_objects), 0, X[:, dim], 0] = 1
+        # print(zCoresDim[dim].shape, w.n)
+    if coef is not None:
+        zCoresDim[0][:, 0, :, 0] *= coef[:, np.newaxis]
+    ############################################
+    #################### End ###################
+    ############################################
+    # Initialize the cores of the projection_w(sum x[i]).
+    coresP = []
+    for dim in xrange(numDims):
+        r1 = 2 * w.r[dim]
+        r2 = 2 * w.r[dim+1]
+        if dim == 0:
+            r1 = 1
+        if dim == numDims - 1:
+            r2 = 1
+        coresP.append(np.zeros((r1, modeSize[dim], r2)))
+    # rhs[dim] is a num_objects x 1 x w.rank_dim.rank_dim ndarray.
+    # Right to left orthogonalization of X and preparation of the rhs vectors.
+    for dim in xrange(numDims-1, 0, -1):
+        # Right to left orthogonalization of the X cores.
+        cores_w = riemannian.cores_orthogonalization_step(cores_w, dim, left_to_right=False)
+        r1, n, r2 = cores_w[dim].shape
+
+        # Fill the right orthogonal part of the projection.
+        coresP[dim][0:r1, :, 0:r2] = cores_w[dim]
+    ############################################
+    ########## L2 regularization term ##########
+    ############################################
+    r1, n, r2 = cores_w[0].shape
+    coresP[0][:, :, 0:r2] = reg * cores_w[0]
+    ############################################
+    #################### End ###################
+    ############################################
+
+    rhs = [None] * (numDims+1)
+    for dim in xrange(numDims):
+        rhs[dim] = np.zeros([num_objects, 1, cores_w[dim].shape[0]])
+    rhs[numDims] = np.ones([num_objects, 1, 1])
+
+    for dim in xrange(numDims-1, 0, -1):
+        riemannian._update_rhs(rhs[dim+1], cores_w[dim], zCoresDim[dim], rhs[dim])
+
+    if debug:
+        assert(np.allclose(w.full(), tt.tensor.from_list(cores_w).full()))
+
+    # lsh is a num_objects x X.rank_dim x 1 ndarray.
+    lhs = np.ones([num_objects, 1, 1])
+    # Left to right sweep.
+    for dim in xrange(numDims):
+        cc = cores_w[dim].copy()
+        r1, n, r2 = cc.shape
+        if dim < numDims-1:
+            # Left to right orthogonalization.
+            cc = reshape(cc, (-1, r2))
+            cc, rr = np.linalg.qr(cc)
+            r2 = cc.shape[1]
+            # Warning: since ranks can change here, do not use X.r!
+            # Use cores_w[dim].shape instead.
+            if debug:
+                # Need to do it before the move non orthogonal part rr to
+                # the cores_w[dim+1].
+                rightQ = riemannian.right(tt.tensor.from_list(cores_w), dim+1)
+            cores_w[dim] = reshape(cc, (r1, n, r2)).copy()
+            cores_w[dim+1] = np.tensordot(rr, cores_w[dim+1], 1)
+
+            new_lhs = np.zeros([num_objects, r2, 1])
+            riemannian._update_lhs(lhs, cores_w[dim], zCoresDim[dim], new_lhs)
+
+            # See the correspondic section in the non-jit version of this
+            # code for a less confusing implementation of
+            # the transformation below.
+            currPCore = np.einsum('ijk,iklm->ijlm', lhs, zCoresDim[dim])
+            currPCore = reshape(currPCore, (num_objects, r1*n, -1))
+            currPCore -= np.einsum('ij,kjl->kil', cc, new_lhs)
+            currPCore = np.einsum('ijk,ikl', currPCore, rhs[dim+1])
+            currPCore = reshape(currPCore, (r1, modeSize[dim], r2))
+            if dim == 0:
+                coresP[dim][0:r1, :, 0:r2] += currPCore
+            else:
+                coresP[dim][r1:, :, 0:r2] += currPCore
+            if debug:
+                explicit_sum = np.zeros((r1, modeSize[dim], r2))
+                for idx in xrange(num_objects):
+                    leftQm1 = riemannian.left(tt.tensor.from_list(cores_w), dim-1)
+                    leftQ = riemannian.left(tt.tensor.from_list(cores_w), dim)
+
+                    obj_tensor = subset_tensor(X[idx, :])
+                    first = np.tensordot(leftQm1.T, riemannian.unfolding(obj_tensor, dim-1), 1)
+                    second = reshape(first, (-1, np.prod(modeSize[dim+1:])))
+                    if dim < numDims-1:
+                        explicit = second.dot(rightQ)
+                        orth_cc = reshape(cores_w[dim], (-1, cores_w[dim].shape[2]))
+                        explicit -= orth_cc.dot(leftQ.T.dot(riemannian.unfolding(obj_tensor, dim)).dot(rightQ))
+                    else:
+                        explicit = second
+                    explicit_sum += reshape(explicit, currPCore.shape)
+                assert(np.allclose(explicit_sum, currPCore))
+            lhs = new_lhs
+
+            if dim == 0:
+                coresP[dim][0:r1, :, r2:] = cores_w[dim]
+            else:
+                coresP[dim][r1:, :, r2:] = cores_w[dim]
+
+        if dim == numDims-1:
+            coresP[dim][r1:, :, 0:r2] += np.einsum('ijk,iklm->jlm', lhs, zCoresDim[dim])
+
+    if debug:
+        assert(np.allclose(w.full(), tt.tensor.from_list(cores_w).full()))
+    return tt.tensor.from_list(coresP)
+
+
 # TODO: test it.
 # TODO: JIT!
 def _prepare_linear_core(w):
