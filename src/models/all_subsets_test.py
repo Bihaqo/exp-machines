@@ -77,7 +77,6 @@ class AllSubsetsTest(unittest.TestCase):
         numerical_grad = np.zeros(len(core))
         for i in range(len(core)):
             new_core = copy.copy(core)
-            # print(new_core)
             new_core[i] += eps
             numerical_grad[i] = (loss(new_core) - value) / eps
 
@@ -101,7 +100,7 @@ class AllSubsetsTest(unittest.TestCase):
         X_2 = np.random.randint(3, size=(10, 1))
         X_3 = np.random.randint(4, size=(10, 1))
         X_4 = np.random.randint(5, size=(10, 1))
-        X = np.hstack((X_1, X_2, X_3, X_4))
+        X = np.hstack((X_1, X_2, X_3, X_4)) + 1
         exact_answ = np.zeros(10)
         for obj_idx in range(10):
             obj = all_subsets.categorical_subset_tensor(X[obj_idx, :], [2, 3, 4, 5])

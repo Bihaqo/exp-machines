@@ -21,7 +21,7 @@ def categorical_subset_tensor(x, num_values):
     idx = 0
     tens.core *= 0
     for dim in range(x.size):
-        curr_feat_idx = idx + x[dim] + 1
+        curr_feat_idx = idx + x[dim]
         tens.core[idx] = 1
         tens.core[curr_feat_idx] = 1
         idx += num_values[dim] + 1
@@ -343,7 +343,7 @@ def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes
     for obj_idx in range(num_objects):
         idx = 0
         for alpha_2 in range(ranks[1]):
-            curr_feat_idx = idx + X[obj_idx, 0] + 1
+            curr_feat_idx = idx + X[obj_idx, 0]
             current_vectors[obj_idx, alpha_2] = linear_core_w[idx] + linear_core_w[curr_feat_idx]
             idx += modes[0]
     for dim in range(1, num_dims-1):
@@ -354,7 +354,7 @@ def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes
             for alpha_2 in range(ranks[dim+1]):
                 val = 0
                 for alpha_1 in range(ranks[dim]):
-                    curr_feat_idx = idx + X[obj_idx, dim] + 1
+                    curr_feat_idx = idx + X[obj_idx, dim]
                     curr_core = linear_core_w[idx] + linear_core_w[curr_feat_idx]
                     val += current_vectors[obj_idx, alpha_1] * curr_core
                     idx += modes[dim]
@@ -366,7 +366,7 @@ def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes
         idx = prev_idx
         val = 0
         for alpha_1 in range(ranks[dim]):
-            curr_feat_idx = idx + X[obj_idx, dim] + 1
+            curr_feat_idx = idx + X[obj_idx, dim]
             curr_core = linear_core_w[idx] + linear_core_w[curr_feat_idx]
             idx += modes[dim]
             val += current_vectors[obj_idx, alpha_1] * curr_core
