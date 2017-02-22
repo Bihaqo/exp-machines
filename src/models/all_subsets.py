@@ -14,6 +14,20 @@ def subset_tensor(x):
     return tens
 
 
+def categorical_subset_tensor(x, num_classes):
+    # Here we assume that the features in x are categorical.
+    # Num classes is an array where for each feature we see the number of classes.
+    tens = tt.ones(np.array(num_classes) + 1)
+    idx = 0
+    tens.core *= 0
+    for dim in range(x.size):
+        class_idx = idx + x[dim] + 1
+        tens.core[idx] = 1
+        tens.core[class_idx] = 1
+        idx += num_classes[dim] + 1
+    return tens
+
+
 def tensorize_linear_init(coef, intercept):
     """Initialize all-subset model with weights of a linear model.
 
