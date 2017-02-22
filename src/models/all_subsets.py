@@ -53,21 +53,35 @@ def tensorize_linear_init(coef, intercept):
 def categorical_tensorize_linear_init(coef, intercept):
     """Initialize categorical-all-subset model with weights of a linear model.
 
-    Given a vector of d coefficients of a linear model returns a d-dimensional
-    TT tensor of all-subsets model which represent the same linear model.
-    The resulting TT-tensor ranks equal 2."""
-    coef = np.array(coef)
-    num_features = coef.shape[0]
+    Input is an array coef of d vectors where coef[i][j] represents the
+    coefficients before the indicator value `i-th feature is taking value j'.
+    Returns TT tensor of categorical-all-subsets model which represent the same
+    linear model. The resulting TT-tensor ranks equal 2.
+    """
+    # coef = np.array(coef)
+    num_features = len(coef)
     w_cores = [None] * num_features
     for i in range(num_features):
+        curr_num_values = len(coef[i])
         if i == 0:
-            core = np.array([[[1, 0], [0, coef[i]]]])
+            core = np.zeros((1, curr_num_values + 1, 2))
+            core[0, 0, 0] = 1
+            for feature_value in range(1, curr_num_values + 1):
+                curr_coef = coef[i][feature_value - 1]
+                core[0, feature_value, 1] = curr_coef
         elif i == num_features-1:
-            core = np.array([[[intercept], [coef[i]]], [[1], [0]]])
+            core = np.zeros((2, curr_num_values + 1, 1))
+            core[0, 0, 0] = intercept
+            core[1, 0, 0] = 1
+            for feature_value in range(1, curr_num_values + 1):
+                curr_coef = coef[i][feature_value - 1]
+                core[0, feature_value, 0] = curr_coef
         else:
-            core = np.zeros([2, 2, 2])
+            core = np.zeros([2, curr_num_values + 1, 2])
             core[:, 0, :] = np.eye(2)
-            core[:, 1, :] = np.array([[0, 1], [0, 0]]) * coef[i]
+            for feature_value in range(1, curr_num_values + 1):
+                curr_coef = coef[i][feature_value - 1]
+                core[:, feature_value, :] = np.array([[0, 1], [0, 0]]) * curr_coef
         w_cores[i] = core
     return tt.tensor.from_list(w_cores)
 
