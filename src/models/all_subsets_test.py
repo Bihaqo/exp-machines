@@ -40,6 +40,21 @@ class AllSubsetsTest(unittest.TestCase):
         desired[0, 0, 0, 0, 1] = coef[4]
         np.testing.assert_almost_equal(desired, w_coef.full())
 
+    def test_categorical_tensorize_linear_init(self):
+        coef = [[0, 1], [2, 3, 4], [-12, 0.4]]
+        intercept = 5
+        w_coef = all_subsets.categorical_tensorize_linear_init(coef, intercept)
+        desired = np.zeros(w_coef.n)
+        desired[0, 0, 0] = intercept
+        desired[1, 0, 0] = coef[0][0]
+        desired[2, 0, 0] = coef[0][1]
+        desired[0, 1, 0] = coef[1][0]
+        desired[0, 2, 0] = coef[1][1]
+        desired[0, 3, 0] = coef[1][2]
+        desired[0, 0, 1] = coef[2][0]
+        desired[0, 0, 2] = coef[2][1]
+        np.testing.assert_almost_equal(desired, w_coef.full())
+
     def test_gradient_wrt_core(self):
         w = tt.rand([2, 2, 2], 3, [1, 2, 2, 1])
         x_1 = all_subsets.subset_tensor([3, 4, 5])
