@@ -70,6 +70,16 @@ class AllSubsetsTest(unittest.TestCase):
         gradient = all_subsets.gradient_wrt_cores(w_cores, X, dfdz)
         np.testing.assert_array_almost_equal(numerical_grad, gradient, decimal=3)
 
+    def test_vectorized_tt_dot(self):
+        w = tt.rand([2, 2, 2, 2], 4, [1, 2, 3, 2, 1])
+        X = np.random.randn(10, 4)
+        exact_answ = np.zeros(10)
+        for obj_idx in range(10):
+            obj = all_subsets.subset_tensor(X[obj_idx, :])
+            exact_answ[obj_idx] = tt.dot(w, obj)
+        res = all_subsets.vectorized_tt_dot(w, X)
+        np.testing.assert_array_almost_equal(res, exact_answ)
+
 
 if __name__ == '__main__':
     unittest.main()
