@@ -234,7 +234,13 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
                     leftQm1 = riemannian.left(tt.tensor.from_list(cores_w), dim-1)
                     leftQ = riemannian.left(tt.tensor.from_list(cores_w), dim)
 
+                    ############################################
+                    #### Specific to the all-subsets tensors ###
+                    ############################################
                     obj_tensor = subset_tensor(X[idx, :])
+                    ############################################
+                    #################### End ###################
+                    ############################################
                     first = np.tensordot(leftQm1.T, riemannian.unfolding(obj_tensor, dim-1), 1)
                     second = reshape(first, (-1, np.prod(modeSize[dim+1:])))
                     if dim < numDims-1:
@@ -375,8 +381,13 @@ def categorical_project_all_subsets(w, X, coef=None, reg=0, debug=False):
                 for idx in xrange(num_objects):
                     leftQm1 = riemannian.left(tt.tensor.from_list(cores_w), dim-1)
                     leftQ = riemannian.left(tt.tensor.from_list(cores_w), dim)
-
+                    ############################################
+                    #### Specific to the all-subsets tensors ###
+                    ############################################
                     obj_tensor = subset_tensor(X[idx, :])
+                    ############################################
+                    #################### End ###################
+                    ############################################
                     first = np.tensordot(leftQm1.T, riemannian.unfolding(obj_tensor, dim-1), 1)
                     second = reshape(first, (-1, np.prod(modeSize[dim+1:])))
                     if dim < numDims-1:
