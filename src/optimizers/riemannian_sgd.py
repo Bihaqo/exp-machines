@@ -65,7 +65,11 @@ def increase_rank(w0, rank, train_x, train_y, vectorized_tt_dot_h,
 
 def build_reg_tens(n, exp_reg):
     reg_tens = tt.ones(n)
-    reg_tens.core[1::2] = exp_reg
+    reg_tens.core[:] = exp_reg
+    idx = 0
+    for mode_idx in range(len(n)):
+        reg_tens.core[idx] = 1
+        idx += n[mode_idx]
     return reg_tens
 
 
