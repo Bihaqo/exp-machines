@@ -27,6 +27,23 @@ class AllSubsetsTest(unittest.TestCase):
             res = all_subsets.project_all_subsets(w, X, reg=reg, debug=debug_mode)
             np.testing.assert_array_almost_equal(res.full(), exact_answ)
 
+    def test_categorical_project_all_subsets(self):
+        reg = 0.4
+        for debug_mode in [False, True]:
+            w = tt.rand([3, 4, 5, 6], 4, [1, 3, 4, 5, 1])
+            X_1 = np.random.randint(2, size=(2, 1))
+            X_2 = np.random.randint(3, size=(2, 1))
+            X_3 = np.random.randint(4, size=(2, 1))
+            X_4 = np.random.randint(5, size=(2, 1))
+            X = np.hstack((X_1, X_2, X_3, X_4)) + 1
+            exact_answ = reg * w.full()
+            for obj_idx in range(2):
+                obj = all_subsets.categorical_subset_tensor(X[obj_idx, :], [2, 3, 4, 5])
+                exact_answ += riemannian.project(w, obj).full()
+
+            res = all_subsets.categorical_project_all_subsets(w, X, reg=reg, debug=debug_mode)
+            np.testing.assert_array_almost_equal(res.full(), exact_answ)
+
     def test_tensorize_linear_init(self):
         coef = [0, 3, 0.2, 0, -12]
         intercept = 5
