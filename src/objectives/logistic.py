@@ -4,6 +4,7 @@ Utils related to the logistic regression.
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import OneHotEncoder
 
 def log1pexp(x):
     """log(1 + exp(x))"""
@@ -49,7 +50,7 @@ def preprocess(X, y, info=None):
                              " class: %r." % info['classes'][0])
 
         if n_classes > 2:
-             raise NotImplementedError("multiclass is not implemented yet.")
+            raise NotImplementedError("multiclass is not implemented yet.")
 
     idx_min_1 = (y == info['classes'][0])
     y = np.ones(y.shape)
@@ -65,3 +66,27 @@ def linear_init(X, y, fit_intercept=True):
     else:
         intercept = logreg.intercept_
     return logreg.coef_[0, :], intercept
+
+
+def categorical_linear_init(X, y, fit_intercept=True):
+    if np.min(X.flatten()) < 1:
+        raise ValueError('The categorical features should be from 1 to K.')
+
+    encoder = OneHotEncoder()
+    X_shifted = X - 1
+    encoder.fit(X_shifted)
+    logreg = LogisticRegression(fit_intercept=fit_intercept)
+    logreg.fit(encoder.transform(X_shifted), y)
+    if fit_intercept:
+        intercept = logreg.intercept_[0]
+    else:
+        intercept = logreg.intercept_
+    num_categorical_feaures = X.shape[1]
+    coef = []
+    start = 0
+    for feature_idx in range(num_categorical_feaures):
+        curr_num_values = encoder.n_values_[feature_idx]
+        end = start + curr_num_values
+        coef.append(logreg.coef_[0, start:end])
+        start = end
+    return coef, intercept
