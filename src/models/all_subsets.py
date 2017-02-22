@@ -485,7 +485,7 @@ def vectorized_tt_dot(w, x):
     return res
 
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def _vectorized_tt_dot_categorical_jit(linear_core_w, X, result, num_dims, modes, ranks):
     """Compute a dot products between a tensor w and subset tensors built from x.
 
