@@ -211,33 +211,20 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
 
 
 # TODO: test it.
+# TODO: JIT!
 def _prepare_linear_core(w):
     """This function prepare the data to be used in _vectorized_tt_dot_jit"""
     res = np.zeros(w.core.shape[0])
     idx = 0
     num_dims = w.d
     cores_w = tt.tensor.to_list(w)
-    r1, n, r2 = cores_w[0].shape
-    for alpha_2 in xrange(r2):
-        res[idx] = cores_w[0][0, 0, alpha_2]
-        idx += 1
-        res[idx] = cores_w[0][0, 1, alpha_2]
-        idx += 1
-    for dim in xrange(1, num_dims-1):
+    for dim in xrange(num_dims):
         r1, n, r2 = cores_w[dim].shape
         for alpha_2 in xrange(r2):
             for alpha_1 in xrange(r1):
-                res[idx] = cores_w[dim][alpha_1, 0, alpha_2]
-                idx += 1
-                res[idx] = cores_w[dim][alpha_1, 1, alpha_2]
-                idx += 1
-    dim = num_dims-1
-    r1, n, r2 = cores_w[dim].shape
-    for alpha_1 in xrange(r1):
-        res[idx] = cores_w[dim][alpha_1, 0, 0]
-        idx += 1
-        res[idx] = cores_w[dim][alpha_1, 1, 0]
-        idx += 1
+                for curr_mode_idx in xrange(n):
+                    res[idx] = cores_w[dim][alpha_1, curr_mode_idx, alpha_2]
+                    idx += 1
     return res
 
 
