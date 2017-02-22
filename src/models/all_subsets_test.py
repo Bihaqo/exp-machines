@@ -80,6 +80,20 @@ class AllSubsetsTest(unittest.TestCase):
         res = all_subsets.vectorized_tt_dot(w, X)
         np.testing.assert_array_almost_equal(res, exact_answ)
 
+    def test_vectorized_tt_dot_categorical(self):
+        w = tt.rand([3, 4, 5, 6], 4, [1, 2, 4, 5, 1])
+        X_1 = np.random.randint(2, size=(10, 1))
+        X_2 = np.random.randint(3, size=(10, 1))
+        X_3 = np.random.randint(4, size=(10, 1))
+        X_4 = np.random.randint(5, size=(10, 1))
+        X = np.hstack((X_1, X_2, X_3, X_4))
+        exact_answ = np.zeros(10)
+        for obj_idx in range(10):
+            obj = all_subsets.categorical_subset_tensor(X[obj_idx, :], [2, 3, 4, 5])
+            exact_answ[obj_idx] = tt.dot(w, obj)
+        res = all_subsets.vectorized_tt_dot_categorical(w, X)
+        np.testing.assert_array_almost_equal(res, exact_answ)
+
 
 if __name__ == '__main__':
     unittest.main()
