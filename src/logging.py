@@ -82,7 +82,7 @@ class Logging:
             self.time_hist.append(0)
             status += ' stats computed in %f seconds' % (timeit.default_timer() - prev_timestamp)
             if self.disp():
-                print status
+                print(status)
                 sys.stdout.flush()
 
         self.iter_counter += 1
@@ -131,7 +131,7 @@ class Logging:
                 status += 'processed %f ob/s; stats in %f seconds' % (learning_speed, timeit.default_timer() - prev_timestamp)
 
             if self.disp():
-                print status
+                print(status)
                 sys.stdout.flush()
 
         self.prev_timestamp = timeit.default_timer()
