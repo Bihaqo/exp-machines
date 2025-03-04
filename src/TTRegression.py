@@ -1,4 +1,4 @@
-from sklearn.linear_model.base import BaseEstimator, LinearClassifierMixin
+from sklearn.linear_model._base import BaseEstimator, LinearClassifierMixin
 import sklearn
 import numpy as np
 from copy import deepcopy
@@ -6,7 +6,7 @@ from utils import roc_auc_score_reversed
 
 import tt
 
-import logging
+from . import logging
 
 
 class TTRegression(BaseEstimator, LinearClassifierMixin):

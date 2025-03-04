@@ -1,0 +1,7 @@
+*-support-*
+.idea
+__pycache__
+*.data
+*.pdf
+*.pickle
+.ipynb_checkpoints

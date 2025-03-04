@@ -107,9 +107,9 @@ def riemannian_sgd(train_x, train_y, vectorized_tt_dot_h, loss_h,
 
     reg_tens = build_reg_tens(w.n, exp_reg)
 
-    for e in xrange(start_epoch, num_passes):
+    for e in range(start_epoch, num_passes):
         idx_perm = np.random.permutation(num_objects)
-        for batch_idx in xrange(num_batches):
+        for batch_idx in range(num_batches):
             start = batch_idx * batch_size
             end = (batch_idx + 1) * batch_size
             curr_idx = idx_perm[start:end]

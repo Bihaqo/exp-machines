@@ -49,18 +49,18 @@ def gradient_wrt_cores(w_cores, x, dfdz):
     """
     num_objects, num_features = x.shape
     summed_cores = [None] * num_features
-    for dim in xrange(num_features):
+    for dim in range(num_features):
         r1, n, r2 = w_cores[dim].shape
         summed_cores[dim] = reshape(w_cores[dim][:, 1, :], (r1, r2, 1)) * x[np.newaxis, np.newaxis, :, dim]
         summed_cores[dim] += reshape(w_cores[dim][:, 0, :], (r1, r2, 1))
 
     rhs = [None] * (num_features + 1)
     rhs[num_features] = np.ones((1, num_objects))
-    for dim in xrange(num_features-1, 0, -1):
+    for dim in range(num_features-1, 0, -1):
         rhs[dim] = np.einsum("ijk,jk->ik", summed_cores[dim], rhs[dim+1])
     lhs = np.ones((num_objects, 1))
     grad = [None] * num_features
-    for dim in xrange(num_features):
+    for dim in range(num_features):
         r1, n, r2 = w_cores[dim].shape
         grad[dim] = np.zeros((r1, n, r2))
         grad[dim][:, 0, :] = np.einsum("ij,ki,i->jk", lhs, rhs[dim+1], dfdz)
@@ -95,7 +95,7 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
     ############################################
     # zCoresDim[k][i, :, :, :] is the k-th core of the i-th object.
     zCoresDim = [None] * numDims
-    for dim in xrange(numDims):
+    for dim in range(numDims):
         zCoresDim[dim] = np.zeros([num_objects, 1, 2, 1])
         zCoresDim[dim][:, 0, 0, 0] = 1
         zCoresDim[dim][:, 0, 1, 0] = X[:, dim]
@@ -106,7 +106,7 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
     ############################################
     # Initialize the cores of the projection_w(sum x[i]).
     coresP = []
-    for dim in xrange(numDims):
+    for dim in range(numDims):
         r1 = 2 * w.r[dim]
         r2 = 2 * w.r[dim+1]
         if dim == 0:
@@ -116,7 +116,7 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
         coresP.append(np.zeros((r1, modeSize[dim], r2)))
     # rhs[dim] is a num_objects x 1 x w.rank_dim.rank_dim ndarray.
     # Right to left orthogonalization of X and preparation of the rhs vectors.
-    for dim in xrange(numDims-1, 0, -1):
+    for dim in range(numDims-1, 0, -1):
         # Right to left orthogonalization of the X cores.
         cores_w = riemannian.cores_orthogonalization_step(cores_w, dim, left_to_right=False)
         r1, n, r2 = cores_w[dim].shape
@@ -133,11 +133,11 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
     ############################################
 
     rhs = [None] * (numDims+1)
-    for dim in xrange(numDims):
+    for dim in range(numDims):
         rhs[dim] = np.zeros([num_objects, 1, cores_w[dim].shape[0]])
     rhs[numDims] = np.ones([num_objects, 1, 1])
 
-    for dim in xrange(numDims-1, 0, -1):
+    for dim in range(numDims-1, 0, -1):
         riemannian._update_rhs(rhs[dim+1], cores_w[dim], zCoresDim[dim], rhs[dim])
 
     if debug:
@@ -146,7 +146,7 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
     # lsh is a num_objects x X.rank_dim x 1 ndarray.
     lhs = np.ones([num_objects, 1, 1])
     # Left to right sweep.
-    for dim in xrange(numDims):
+    for dim in range(numDims):
         cc = cores_w[dim].copy()
         r1, n, r2 = cc.shape
         if dim < numDims-1:
@@ -180,7 +180,7 @@ def project_all_subsets(w, X, coef=None, reg=0, debug=False):
                 coresP[dim][r1:, :, 0:r2] += currPCore
             if debug:
                 explicit_sum = np.zeros((r1, modeSize[dim], r2))
-                for idx in xrange(num_objects):
+                for idx in range(num_objects):
                     leftQm1 = riemannian.left(tt.tensor.from_list(cores_w), dim-1)
                     leftQ = riemannian.left(tt.tensor.from_list(cores_w), dim)
 
@@ -218,22 +218,22 @@ def _prepare_linear_core(w):
     num_dims = w.d
     cores_w = tt.tensor.to_list(w)
     r1, n, r2 = cores_w[0].shape
-    for alpha_2 in xrange(r2):
+    for alpha_2 in range(r2):
         res[idx] = cores_w[0][0, 0, alpha_2]
         idx += 1
         res[idx] = cores_w[0][0, 1, alpha_2]
         idx += 1
-    for dim in xrange(1, num_dims-1):
+    for dim in range(1, num_dims-1):
         r1, n, r2 = cores_w[dim].shape
-        for alpha_2 in xrange(r2):
-            for alpha_1 in xrange(r1):
+        for alpha_2 in range(r2):
+            for alpha_1 in range(r1):
                 res[idx] = cores_w[dim][alpha_1, 0, alpha_2]
                 idx += 1
                 res[idx] = cores_w[dim][alpha_1, 1, alpha_2]
                 idx += 1
     dim = num_dims-1
     r1, n, r2 = cores_w[dim].shape
-    for alpha_1 in xrange(r1):
+    for alpha_1 in range(r1):
         res[idx] = cores_w[dim][alpha_1, 0, 0]
         idx += 1
         res[idx] = cores_w[dim][alpha_1, 1, 0]

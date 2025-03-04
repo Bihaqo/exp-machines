@@ -1,0 +1,6 @@
+ttpy==1.2.0
+pandas~=2.2
+matplotlib~=3.10
+scikit-learn~=1.6
+numba~=0.61
+notebook~=7.3

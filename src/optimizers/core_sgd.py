@@ -43,9 +43,9 @@ def core_sgd(train_x, train_y, vectorized_tt_dot_h, loss_h,
 
     # TODO: use some more resanable step initialization (e.g. a line search on the first iteration).
     step_w = 1
-    for e in xrange(start_epoch, num_passes):
+    for e in range(start_epoch, num_passes):
         idx_perm = np.random.permutation(num_objects)
-        for batch_idx in xrange(num_batches):
+        for batch_idx in range(num_batches):
             # Allow the step to grow.
             step_w *= 1.2
             start = batch_idx * batch_size
